@@ -1,0 +1,93 @@
+---
+title: "datatable_demo"
+author: "Julia Parish"
+date: '2022-04-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+library(tidyverse)
+library(tictoc)
+library(dtplyr)
+```
+
+```{r}
+# how fast code is running with tic | toc
+tic()
+ftm_trees_df <- readr::read_csv("FTM_trees.csv")
+toc()
+```
+
+```{r}
+tic()
+
+ftm_trees_dt <- data.table::fread("FTM_trees.csv")
+
+toc()
+```
+
+```{r}
+# what is created when using read_csv vs data.table
+
+class(ftm_trees_df)
+class(ftm_trees_dt)
+```
+
+Wrangle those data objects to only include trees of species "ponderosa"
+```{r}
+# data wrangling
+
+tic()
+
+ponderosa <- ftm_trees_df %>% filter(Species_name == "ponderosa")
+
+toc()
+
+```
+
+```{r}
+tic()
+ponderosa <- ftm_trees_dt[Species_name == "ponderosa"]
+toc()
+```
+
+```{r}
+# create a version - lazy trees, applied to data object sets it up to use Dplyr
+
+lazy_trees <- lazy_dt(ftm_trees_df)
+class(lazy_trees) # dtplyr_step
+```
+
+dtplyr_step_first object - convert to data table syntax
+```{r}
+
+lazy_trees %>% filter(Species_name %in% c("ponderosa", "jeffreyi") & HT_m > 21) %>% 
+                        select(Genus, Species_name, DBH_cm, HT_m) %>% 
+                        group_by(Species_name) %>% 
+                        summarize(mean_height = mean(HT_m, na.rm = TRUE))
+
+```
+
+```{r}
+
+lazy_trees %>% filter(Species_name %in% c("ponderosa", "jeffreyi") & HT_m > 21) %>% 
+                        select(Genus, Species_name, DBH_cm, HT_m) %>% 
+                        group_by(Species_name) %>% 
+                        summarize(mean_height = mean(HT_m, na.rm = TRUE)) %>% 
+  as_tibble()
+```
+
+Using `data.table` syntax: 
+
+```{r}
+ftm_trees_dt[Species_name %in% c("ponderosa", "jeffreyi") & HT_m > 
+    21, .(Genus, Species_name, DBH_cm, HT_m)][, .(mean_height = mean(HT_m, 
+    na.rm = TRUE), mean_diameter = mean(DBH_cm, na.rm = TRUE)), 
+    keyby = .(Species_name)]
+```
+
